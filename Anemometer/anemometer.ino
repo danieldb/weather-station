@@ -30,6 +30,7 @@ void loop()
         protectedTicks = ticks;
         ticks = 0;
         interrupts();
+        Serial.print("ticks:");
         Serial.println(protectedTicks);
     }
 }
