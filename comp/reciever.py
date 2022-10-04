@@ -36,8 +36,16 @@ def serial_ports():
     return result
 
 
-print(serial_ports())
-dht_bmp = serial.Serial("/dev/tty.usbmodem1401", 9600)
+def auto_select_serial_port():
+    ports = serial_ports()
+    for i in ports:
+        if not i.__contains__("Bluetooth"):
+            return i
+
+
+print()
+port = auto_select_serial_port()
+dht_bmp = serial.Serial(port, 9600)
 data = {}
 while True:
     try:
