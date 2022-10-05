@@ -6,6 +6,10 @@ import glob
 import serial
 from datetime import datetime
 import psycopg
+import csv
+from os.path import exists
+
+USING_POSTGRESQL = False
 
 
 def serial_ports():
@@ -77,19 +81,45 @@ def log_to_db(
             conn.commit()
 
 
+def log_to_csv(data, filename="data.csv"):
+    if not exists("data.csv"):
+        with open("data.csv", "w") as csvfile:
+            csvfile.write("ABMP,HDHT,PBMP,PER,TBMP,TDHT,WLRG,WSA,TIME\n")
+    print("loggin")
+    with open("data.csv", "a") as csvfile:
+        writer = csv.writer(csvfile, delimiter=",", quotechar="'")
+        writer.writerow(
+            [
+                data.get("ABMP"),
+                data.get("HDHT"),
+                data.get("PBMP"),
+                data.get("PER"),
+                data.get("TBMP"),
+                data.get("TDHT"),
+                data.get("WLRG"),
+                data.get("WSA"),
+                data.get("TIME"),
+            ]
+        )
+
+
 port = auto_select_serial_port()
 dht_bmp = serial.Serial(port, 9600)
 data = {}
 while True:
     try:
-        line = dht_bmp.read_until(b"\n")
+        line = dht_bmp.read_until(b"\n").replace(b"\r\n", b"")
         print(line)
         vars = line.decode("utf8").split(",")
         for i in vars:
             var = i.split(":")
-            data[var[0]] = var[1].replace("\n", "").replace("\r", "")
+            data[var[0]] = var[1]
         data["TIME"] = datetime.now()
-        pprint(data)
+        if USING_POSTGRESQL:
+            log_to_db(data)
+        else:
+            print(data)
+            log_to_csv(data)
 
     except KeyboardInterrupt:
         dht_bmp.close()
