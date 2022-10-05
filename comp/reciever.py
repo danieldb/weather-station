@@ -5,6 +5,7 @@ import sys
 import glob
 import serial
 from datetime import datetime
+import psycopg
 
 
 def serial_ports():
@@ -43,7 +44,39 @@ def auto_select_serial_port():
             return i
 
 
-print()
+def log_to_db(
+    data,
+    schema_name="public",
+    table_name="data",
+):
+    with psycopg.connect(
+        "host=localhost port=5432 dbname=postgres connect_timeout=10"
+    ) as conn:
+        # Open a cursor to perform database operations
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""INSERT INTO {schema_name}.{table_name}("PER", 
+                                            "WSPD", 
+                                            "PRES", 
+                                            "TEMP", 
+                                            "ALT", 
+                                            "HUM", 
+                                            "RNFL", 
+                                            "WNDR", 
+                                            "TSTMP") VALUES (
+                                                {data.get("PER")},
+                                                {data.get("WSA")},
+                                                {data.get("PBMP")},
+                                                {data.get("TDHT")},
+                                                {data.get("ABMP")},
+                                                {data.get("HDHT")},
+                                                {data.get("WLRG")},
+                                                null,
+                                                '{data.get("TIME")}'::TIMESTAMP)"""
+            )
+            conn.commit()
+
+
 port = auto_select_serial_port()
 dht_bmp = serial.Serial(port, 9600)
 data = {}
@@ -54,12 +87,12 @@ while True:
         vars = line.decode("utf8").split(",")
         for i in vars:
             var = i.split(":")
-            data[var[0]] = var[1]
-        data["time"] = datetime.now().isoformat()
+            data[var[0]] = var[1].replace("\n", "").replace("\r", "")
+        data["TIME"] = datetime.now()
         pprint(data)
+
     except KeyboardInterrupt:
         dht_bmp.close()
         break
-
 
 dht_bmp.close()
