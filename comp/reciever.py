@@ -11,11 +11,13 @@ from dotenv import load_dotenv, dotenv_values
 
 load_dotenv("../.env", override=True)
 env = dotenv_values()
-os.environ["AWS_ACCESS_KEY_ID"] = env.get("WRITER_ACCESS_KEY_ID")
-os.environ["AWS_SECRET_ACCESS_KEY"] = env.get("WRITER_SECRET_ACCESS_KEY")
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 PERSISTER = "DDB"  # DDB, CSV, or LOCAL
+
+if PERSISTER == "DDB":
+    os.environ["AWS_ACCESS_KEY_ID"] = env.get("WRITER_ACCESS_KEY_ID")
+    os.environ["AWS_SECRET_ACCESS_KEY"] = env.get("WRITER_SECRET_ACCESS_KEY")
+    os.environ["AWS_DEFAULT_REGION"] = env.get("AWS_DEFAULT_REGION")
 
 
 def serial_ports():
