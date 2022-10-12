@@ -45,19 +45,19 @@ After flashing the arduino, you are ready to use the `reciever.py` script. This 
 
 1. Save to CSV file
 
-- this is the easiest method
-- this is not a good long term storage option
+   - this is the easiest method
+   - this is not a good long term storage option
 
 2. Save in local Postgresql database with psycopg
 
-- this is a local storage solution
-- local Postgresql can be difficult to set up
+   - this is a local storage solution
+   - local Postgresql can be difficult to set up
 
 3. Save to AWS DynamoDB with boto3
 
-- very reliable
-- able to be quried from a different application
-- fairly easy to set up
+   - very reliable
+   - able to be quried from a different application
+   - fairly easy to set up
 
 I am not going to explain how to set up a DynamoDB table or a local Postgresql instance, but I will say how to set up your code environment so that the reciever can read your AWS credentials.
 
