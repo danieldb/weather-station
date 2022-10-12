@@ -13,8 +13,8 @@ const byte encoderPinB = 4; // outoutB digital pin3
 volatile double ticks = 0;
 double protectedTicks = 0;
 double previousTicks = 0;
-int curMillis = 0;
-int lastMillis = 0;
+uint32_t curMillis = 0;
+uint32_t lastMillis = 0;
 
 #define readA bitRead(PIND, encoderPinA) // faster than digitalRead()
 #define readB bitRead(PIND, encoderPinB) // faster than digitalRead()
@@ -44,10 +44,12 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(encoderPinB), isrB, CHANGE);
 }
 
+long secs = 60000;
+
 void loop()
 {
     curMillis = millis();
-    if (curMillis - lastMillis >= 60000)
+    if (curMillis - lastMillis >= secs)
     {
         noInterrupts();
         protectedTicks = ticks;
@@ -93,7 +95,6 @@ void loop()
         Serial.print("PER:"); // Period
         Serial.print(curMillis-lastMillis);
         Serial.println(); // percent %
-        
         lastMillis = curMillis;
         
         

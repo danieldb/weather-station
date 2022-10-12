@@ -1,6 +1,3 @@
-import json
-from operator import contains
-from pprint import pprint
 import sys
 import glob
 import serial
@@ -8,8 +5,17 @@ from datetime import datetime
 import psycopg
 import csv
 from os.path import exists
+import os
+import boto3
+from dotenv import load_dotenv, dotenv_values
 
-USING_POSTGRESQL = False
+load_dotenv("../.env", override=True)
+env = dotenv_values()
+os.environ["AWS_ACCESS_KEY_ID"] = env.get("WRITER_ACCESS_KEY_ID")
+os.environ["AWS_SECRET_ACCESS_KEY"] = env.get("WRITER_SECRET_ACCESS_KEY")
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
+PERSISTER = "DDB"  # DDB, CSV, or LOCAL
 
 
 def serial_ports():
@@ -48,8 +54,8 @@ def auto_select_serial_port():
             return i
 
 
-def log_to_db(
-    data,
+def log_to_local_db(
+    data: dict[str:float],
     schema_name="public",
     table_name="data",
 ):
@@ -81,10 +87,33 @@ def log_to_db(
             conn.commit()
 
 
-def log_to_csv(data, filename="data.csv"):
+session = boto3.Session()
+ddb = session.client("dynamodb")
+
+
+def log_to_ddb(data: dict[str:float]):
+    ddb.put_item(
+        TableName="weather-station",
+        Item={
+            "PER": {"N": str(data.get("PER"))},  # sampling period (ms)
+            "WSA": {
+                "N": str(data.get("WSA"))
+            },  # wind speed average (encoder ticks / period)
+            "PBMP": {"N": str(data.get("PBMP"))},  # pressure bmp180 (hPa)
+            "TDHT": {"N": str(data.get("TDHT"))},  # temperature dht22 (deg C)
+            "ABMP": {"N": str(data.get("ABMP"))},  # altitude bmp180 (m)
+            "HDHT": {"N": str(data.get("HDHT"))},  # humidity dht22 (%)
+            "WLRG": {"N": str(data.get("WLRG"))},  # rain gague water level (idk yet)
+            "WDIR": {"N": str(data.get("WDIR"))},  # wind direction (idk yet)
+            "TIMESTAMP": {"N": str(data.get("TIME"))},  # timestamp (sec)
+        },
+    )
+
+
+def log_to_csv(data: dict[str:float], filename="data.csv"):
     if not exists("data.csv"):
         with open("data.csv", "w") as csvfile:
-            csvfile.write("ABMP,HDHT,PBMP,PER,TBMP,TDHT,WLRG,WSA,TIME\n")
+            csvfile.write("ABMP,HDHT,PBMP,PER,TBMP,TDHT,WLRG,WSA,WDIR,TIME\n")
     print("loggin")
     with open("data.csv", "a") as csvfile:
         writer = csv.writer(csvfile, delimiter=",", quotechar="'")
@@ -98,31 +127,41 @@ def log_to_csv(data, filename="data.csv"):
                 data.get("TDHT"),
                 data.get("WLRG"),
                 data.get("WSA"),
+                data.get("WDIR"),
                 data.get("TIME"),
             ]
         )
 
 
 port = auto_select_serial_port()
-dht_bmp = serial.Serial(port, 9600)
+arduino = serial.Serial(port, 9600)
 data = {}
 while True:
     try:
-        line = dht_bmp.read_until(b"\n").replace(b"\r\n", b"")
-        print(line)
+        # format line into data
+        line = arduino.read_until(b"\n").replace(b"\r\n", b"")
         vars = line.decode("utf8").split(",")
         for i in vars:
             var = i.split(":")
             data[var[0]] = var[1]
-        data["TIME"] = datetime.now()
-        if USING_POSTGRESQL:
-            log_to_db(data)
-        else:
-            print(data)
+        data["TIME"] = datetime.now().timestamp()
+
+        print(data)
+
+        # send data to specified destination
+        if PERSISTER == "LOCAL":
+            log_to_local_db(data)
+        elif PERSISTER == "CSV":
             log_to_csv(data)
+        elif PERSISTER == "DDB":
+            log_to_ddb(data)
+        else:
+            raise Exception(
+                "Please select a valid destination for persisting the weather data"
+            )
 
     except KeyboardInterrupt:
-        dht_bmp.close()
+        arduino.close()
         break
 
-dht_bmp.close()
+arduino.close()
