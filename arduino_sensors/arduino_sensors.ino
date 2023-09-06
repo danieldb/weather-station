@@ -5,11 +5,11 @@
 #include <DHT_U.h>
 #define seaLevelPressure_hPa 1013.25
 
-#define DHTPIN 2
+#define DHTPIN 9
 #define DHTTYPE DHT22
 
-const byte encoderPinA = 3; // outputA digital pin2
-const byte encoderPinB = 4; // outoutB digital pin3
+const byte encoderPinA = 10; // outputA digital pin2
+const byte encoderPinB = 16; // outoutB digital pin3
 volatile double ticks = 0;
 double protectedTicks = 0;
 double previousTicks = 0;
@@ -29,22 +29,28 @@ void setup()
 {
 
   Serial.begin(9600);
+  Serial.println("Serial: GOOD");
   // Initialize device.
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
+  Serial.println("Encoder: INITIALIZED");
   dht.begin();
+  Serial.println("DHT: GOOD");
 
   if(!bmp.begin())
   {
     /* There was a problem detecting the BMP085 ... check your connections */
-    Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-    while(1);
+    Serial.println("BMP: BAD");
+  }else{
+    Serial.println("BMP: GOOD");
   }
+  
   attachInterrupt(digitalPinToInterrupt(encoderPinA), isrA, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), isrB, CHANGE);
+  Serial.println("Encoder: GOOD");
 }
 
-long secs = 60000;
+long secs = 1000;
 
 void loop()
 {
