@@ -9,7 +9,7 @@
 #define DHTTYPE DHT22
 
 const byte encoderPinA = 10; // outputA digital pin2
-const byte encoderPinB = 16; // outoutB digital pin3
+const byte encoderPinB = 11; // outoutB digital pin3
 volatile double ticks = 0;
 double protectedTicks = 0;
 double previousTicks = 0;
@@ -50,7 +50,7 @@ void setup()
   Serial.println("Encoder: GOOD");
 }
 
-long secs = 1000;
+long secs = 100;
 
 void loop()
 {
@@ -64,9 +64,9 @@ void loop()
         Serial.print(protectedTicks);
         Serial.print(","); // ticks / period (see period below, also, there should be 600 t/r)
         
-        Serial.print("WLRG:"); // water level rain gague
-        Serial.print(analogRead(0));
-        Serial.print(","); // idk units rn
+        //Serial.print("WLRG:"); // water level rain gague
+        //Serial.print(analogRead(0));
+        //Serial.print(","); // idk units rn
 
         sensors_event_t dht_event;
         dht.temperature().getEvent(&dht_event);

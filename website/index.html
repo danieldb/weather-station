@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      
+      body {
+        margin: 0;
+        padding: 0rem;
+        background-color: black;
+      }
+      .stream {
+        background-color: black;
+        border: 1px solid white;
+        border-top: none;
+        border-radius: 0px 0px 8px 8px;
+        color: white;
+        padding-inline: 10px;
+        padding-block: 5px;
+        margin: none;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        font-family: monospace;
+      }
+      .stream:hover {
+        background-color: rgb(121, 121, 121);
+        color: black;
+        padding-bottom: 10px;
+      }
+      .stream.selected {
+        background-color: rgb(121, 121, 121);
+        color: black;
+        padding-bottom: 10px;
+      }
+      #datadisplay {
+        color: white;
+        font-size: 3em;
+        font-family: monospace;
+        position: absolute;
+        left: 300px;
+        top: -30px;
+      }
+      
+    </style>
+  </head>
+  <body>
+    <div>
+      <button id="TDHT" class="stream selected" onclick="
+        document.getElementById('TDHT').classList.add('selected');
+        document.getElementById('HDHT').classList.remove('selected');
+        document.getElementById('WSA').classList.remove('selected');
+        document.getElementById('PBMP').classList.remove('selected');
+        document.dispatchEvent(new Event('streamchange'));
+
+      ">TEMP</button>
+      <button id="HDHT" class="stream" onclick="
+        document.getElementById('TDHT').classList.remove('selected');
+        document.getElementById('HDHT').classList.add('selected');
+        document.getElementById('WSA').classList.remove('selected');
+        document.getElementById('PBMP').classList.remove('selected');
+        document.dispatchEvent(new Event('streamchange'));
+
+      ">HUM</button>
+      <button id="WSA" class="stream" onclick="
+        document.getElementById('TDHT').classList.remove('selected');
+        document.getElementById('HDHT').classList.remove('selected');
+        document.getElementById('WSA').classList.add('selected');
+        document.getElementById('PBMP').classList.remove('selected');
+        document.dispatchEvent(new Event('streamchange'));
+
+      ">WSA</button>
+      <button id="PBMP" class="stream" onclick="
+        document.getElementById('TDHT').classList.remove('selected');
+        document.getElementById('HDHT').classList.remove('selected');
+        document.getElementById('WSA').classList.remove('selected');
+        document.getElementById('PBMP').classList.add('selected');
+        document.dispatchEvent(new Event('streamchange'));
+
+      ">PBMP</button>
+      <p id="datadisplay"></p>
+    </div>
+    <div id="container"></div>
+    <script src="d3.v7.min.js"></script>
+    <script type="module">
+
+      const units = {
+        "TDHT": "°C",
+        "HDHT": "%",
+        "WSA": "m/s",
+        "PBMP": "hPa"
+      }
+      
+      // Declare the chart dimensions and margins.
+      const width = 640;
+      const height = 400;
+      const marginTop = 50;
+      const marginRight = 100;
+      const marginBottom = 80;
+      const marginLeft = 40;
+
+      let data_domains = {
+        "TDHT": [0, 100],
+        "HDHT": [0, 100],
+        "WSA": [0, 100],
+        "PBMP": [1000, 1040]
+      }
+      
+      // Declare the x (horizontal position) scale.
+      let data_now = new Date();
+      const x = d3.scaleTime()
+          .domain([0,0])
+          .range([marginLeft, width - marginRight]);
+      
+      // Declare the y (vertical position) scale.
+      const y = d3.scaleLinear()
+          .domain([0, 100])
+          .range([height - marginBottom, marginTop]);
+      
+      // Create the SVG container.
+      const svg = d3.create("svg")
+          .attr("width", width)
+          .attr("id", "chart")
+          .attr("color", "white")
+          .attr("height", height);
+      
+      // Add the x-axis.
+      const gx = svg.append("g")
+          .attr("transform", `translate(0,${height - marginBottom})`)
+          .call(d3.axisBottom(x));
+      
+      // Add the y-axis.
+      const gy = svg.append("g")
+          .attr("transform", `translate(${marginLeft},0)`)
+          .call(d3.axisLeft(y));
+      
+      y.domain(data_domains[document.getElementsByClassName('selected')[0].id]);
+      gy.transition().duration(1000).call(d3.axisLeft(y));
+
+      document.addEventListener("streamchange", (e) => {
+        y.domain(data_domains[document.getElementsByClassName('selected')[0].id]);
+        gy.transition().duration(1000).call(d3.axisLeft(y));
+      });
+
+      document.addEventListener("newdata", (e) => {
+        if (paused) return;
+        x.domain([new Date((window.data["TIME"]-30) * 1000), new Date(window.data["TIME"] * 1000)]);
+        gx.transition().ease(d3.easeLinear).call(d3.axisBottom(x));
+      });
+
+      let paused = false;
+      document.addEventListener("keydown", (e) => {
+        
+        if (e.key == " ") {
+          e.preventDefault();
+          paused = !paused;
+        }
+      })
+      document.addEventListener("newdata", (e) => {
+        if (paused) return;
+          document.getElementById("datadisplay").innerHTML = window.data[document.getElementsByClassName('selected')[0].id] + units[document.getElementsByClassName('selected')[0].id];
+          svg.selectAll("line").remove();
+          let stream = document.getElementsByClassName('selected')[0].id;
+
+          svg.append("line")
+              .attr("x1", x(new Date(window.pastDatas[window.pastDatas.length-1]["TIME"] * 1000)))
+              .attr("y1", y(window.data[stream]))
+              .attr("x2", x(new Date((window.data["TIME"]-30) * 1000)))
+              .attr("y2", y(window.data[stream]))
+              .attr("stroke-width", 1)
+              .attr("stroke", "gray");
+            
+          for (let i = 0; i < window.pastDatas.length-1; i++) {
+            let dat = window.pastDatas[i];
+            let lastDat = window.pastDatas[i+1];
+            let color = "white";
+
+            svg.append("line")
+              .attr("x1", x(new Date(lastDat["TIME"] * 1000)))
+              .attr("y1", y(lastDat[stream]))
+              .attr("x2", x(new Date(dat["TIME"] * 1000)))
+              .attr("y2", y(dat[stream]))
+              .attr("stroke-width", 2)
+              .attr("stroke", color);
+            
+            /*
+            svg.append("circle")
+            .attr("cx", x(new Date(time * 1000)))
+            .attr("cy", y(data))
+            .attr("r", 5)
+            .attr("fill", color)
+            .attr("stroke", "white")
+            .attr("stroke-width", 1);
+            */
+          }
+          
+        });
+
+      // Append the SVG element.
+      container.append(svg.node());
+      
+      </script>
+    <script src="node_modules/socket.io/client-dist/socket.io.js"></script>
+    <script>
+        var socket = io();
+        window.pastDatas = [];
+        function parseData(data) {
+          let sections = data.split("\n")
+          let headers = sections[0].replace("\r", "").split(",")
+          let values = sections[1].replace("\r", "").split(",")
+          let dict = {}
+          for (let i = 0; i < headers.length; i++) {
+            dict[headers[i]] = values[i]
+          }
+          return dict
+        }
+
+        
+
+        socket.on('data', (data) => {
+            console.log(data);
+            window.data = parseData(data);
+            window.pastDatas.push(window.data);
+            
+            if (window.pastDatas[0]["TIME"] < window.data["TIME"] - 30) {
+              window.pastDatas[1]["TIME"] = window.data["TIME"] - 30;
+              window.pastDatas.shift();
+            }
+            console.log(window.data);
+            document.dispatchEvent(new Event("newdata"));
+        });
+    </script>
+  </body>
+</html>

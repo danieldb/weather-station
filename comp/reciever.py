@@ -10,7 +10,7 @@ import boto3
 from dotenv import load_dotenv, dotenv_values
 
 
-PERSISTER = "DDB"  # DDB, CSV, or LOCAL
+PERSISTER = "LIVE"  # DDB, CSV, or LOCAL
 
 if PERSISTER == "DDB":
     load_dotenv("../.env", override=True)
@@ -134,6 +134,25 @@ def log_to_csv(data: dict[str:float], filename="data.csv"):
             ]
         )
 
+def log_to_temp_storage(data: dict[str:float], filename="data.csv"):
+    print("temp loggin")
+    with open("new_data.csv", "w") as csvfile:
+        csvfile.write("ABMP,HDHT,PBMP,PER,TBMP,TDHT,WLRG,WSA,WDIR,TIME\n")
+        writer = csv.writer(csvfile, delimiter=",", quotechar="'")
+        writer.writerow(
+            [
+                data.get("ABMP"),
+                data.get("HDHT"),
+                data.get("PBMP"),
+                data.get("PER"),
+                data.get("TBMP"),
+                data.get("TDHT"),
+                data.get("WLRG"),
+                data.get("WSA"),
+                data.get("WDIR"),
+                data.get("TIME"),
+            ]
+        )
 
 port = auto_select_serial_port()
 arduino = serial.Serial(port, 9600)
@@ -155,6 +174,8 @@ while True:
             log_to_local_db(data)
         elif PERSISTER == "CSV":
             log_to_csv(data)
+        elif PERSISTER == "LIVE":
+            log_to_temp_storage(data)
         elif PERSISTER == "DDB":
             log_to_ddb(data)
         else:
